@@ -42,6 +42,7 @@ libc = "0.2.99"
 
 # Just benchmarking dependencies, which don't build on wasi
 [target.'cfg(not(target_os = "wasi"))'.dev-dependencies]
+env_logger = "0.11"
 # Pinned to compatibility with MSRV
 ctrlc = "=3.2.3"
 heed = "0.20"
@@ -49,6 +50,7 @@ sanakirja = "=1.4.1"
 sanakirja-core = "=1.4.1"
 rocksdb = "0.22.0"
 comfy-table = "7.0.1"
+canopydb = "0.1"
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 io-uring = "0.6.2"

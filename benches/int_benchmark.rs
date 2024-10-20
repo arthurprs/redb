@@ -75,9 +75,26 @@ fn main() {
         benchmark(table)
     };
 
+    let canopydb_results = {
+        let tmpfile: TempDir = tempfile::tempdir_in(current_dir().unwrap()).unwrap();
+        let mut env_opts = canopydb::EnvOptions::new(tmpfile.path());
+        env_opts.page_cache_size = 4 * 1024 * 1024 * 1024;
+        let db = canopydb::Database::with_options(env_opts, Default::default()).unwrap();
+        let db_bench = CanopydbBenchDatabase::new(&db);
+        benchmark(db_bench)
+    };
+
     let rocksdb_results = {
         let tmpfile: TempDir = tempfile::tempdir_in(current_dir().unwrap()).unwrap();
-        let db = rocksdb::TransactionDB::open_default(tmpfile.path()).unwrap();
+
+        let mut bb = rocksdb::BlockBasedOptions::default();
+        bb.set_block_cache(&rocksdb::Cache::new_lru_cache(4 * 1_024 * 1_024 * 1_024));
+
+        let mut opts = rocksdb::Options::default();
+        opts.set_block_based_table_factory(&bb);
+        opts.create_if_missing(true);
+
+        let db = rocksdb::TransactionDB::open(&opts, &Default::default(), tmpfile.path()).unwrap();
         let table = RocksdbBenchDatabase::new(&db);
         benchmark(table)
     };
@@ -105,10 +122,11 @@ fn main() {
 
     for results in [
         redb_results,
-        lmdb_results,
-        rocksdb_results,
+        canopydb_results,
         sled_results,
         sanakirja_results,
+        lmdb_results,
+        rocksdb_results,
     ] {
         for (i, (_benchmark, duration)) in results.iter().enumerate() {
             rows[i].push(format!("{}ms", duration.as_millis()));
@@ -117,7 +135,15 @@ fn main() {
 
     let mut table = comfy_table::Table::new();
     table.set_width(100);
-    table.set_header(["", "redb", "lmdb", "rocksdb", "sled", "sanakirja"]);
+    table.set_header([
+        "",
+        "redb",
+        "canopydb",
+        "sled",
+        "sanakirja",
+        "lmdb",
+        "rocksdb",
+    ]);
     for row in rows {
         table.add_row(row);
     }
